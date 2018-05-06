@@ -6,7 +6,6 @@ import (
 )
 
 func main() {
-
 	var first string
 	for {
 		first = time.Now().Format(time.RFC850)
