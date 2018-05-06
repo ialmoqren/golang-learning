@@ -1,19 +1,30 @@
 package main
 
 import (
+	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 )
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, `<h1>Hey there</h1>
-<p>It's me</p>
-<p>...playing with go!</p>
-<p>My name is %s but you can call me %s</p>
-`, "Ibrahim Almuqrin", "Ibra")
+type SitemapIndex struct {
+	Locations []Location `xml:"sitemap"`
+}
+
+type Location struct {
+	Loc string `xml:"loc"`
+}
+
+func (l Location) String() string {
+	return fmt.Sprintf(l.Loc)
 }
 
 func main() {
-	http.HandleFunc("/", indexHandler)
-	http.ListenAndServe("", nil)
+	resp, _ := http.Get("https://www.washingtonpost.com/news-sitemap-index.xml")
+	bytes, _ := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	var s SitemapIndex
+	xml.Unmarshal(bytes, &s)
+	fmt.Println(s.Locations)
 }
