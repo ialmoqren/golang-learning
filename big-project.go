@@ -6,13 +6,14 @@ import (
 )
 
 func main() {
-
-	x := 5
+	var first string
 	for {
-		fmt.Println(x, x, x, time.Now().Format(time.RFC850))
-		x += 3
-		if x > 25 {
-			break
+		first = time.Now().Format(time.RFC850)
+		fmt.Println(first)
+		for {
+			if time.Now().Format(time.RFC850) != first {
+				break
+			}
 		}
 	}
 }
