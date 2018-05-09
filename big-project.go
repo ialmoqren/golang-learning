@@ -6,7 +6,19 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"sync"
 )
+
+var wg sync.WaitGroup
+
+type NewsMap struct {
+	Keyword  string
+	Location string
+}
+type NewsAggPage struct {
+	Title string
+	News  map[string]NewsMap
+}
 
 type SitemapIndex struct {
 	Locations []string `xml:"sitemap>loc"`
@@ -17,42 +29,45 @@ type News struct {
 	Locations []string `xml:"url>loc"`
 }
 
-type NewsMap struct {
-	Keyword  string
-	Location string
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "<h1>Whoa, Go is neat!</h1>")
 }
 
-type NewsAggPage struct {
-	Title string
-	News  map[string]NewsMap
+func newsRoutine(c chan News, Location string) {
+	defer wg.Done()
+	var n News
+	resp, _ := http.Get(Location)
+	bytes, _ := ioutil.ReadAll(resp.Body)
+	xml.Unmarshal(bytes, &n)
+	resp.Body.Close()
+	c <- n
 }
 
 func newsAggHandler(w http.ResponseWriter, r *http.Request) {
 	var s SitemapIndex
-	var n News
 	newsMap := make(map[string]NewsMap)
 
 	resp, _ := http.Get("https://www.washingtonpost.com/news-sitemap-index.xml")
 	bytes, _ := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
 	xml.Unmarshal(bytes, &s)
-
+	resp.Body.Close()
+	queue := make(chan News, 30)
 	for _, Location := range s.Locations {
-		resp, _ := http.Get(Location)
-		bytes, _ := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		xml.Unmarshal(bytes, &n)
-		for idx, _ := range n.Keywords {
-			newsMap[n.Titles[idx]] = NewsMap{n.Keywords[idx], n.Locations[idx]}
+		wg.Add(1)
+		go newsRoutine(queue, Location)
+	}
+
+	wg.Wait()
+	close(queue)
+
+	for elem := range queue {
+		for idx, _ := range elem.Keywords {
+			newsMap[elem.Titles[idx]] = NewsMap{elem.Keywords[idx], elem.Locations[idx]}
 		}
 	}
 	p := NewsAggPage{Title: "My Amazing News Aggregator", News: newsMap}
 	t, _ := template.ParseFiles("basictemplate.html")
 	fmt.Println(t.Execute(w, p))
-}
-
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<h1>Whoa, Go is neat!</h1>")
 }
 
 func main() {
