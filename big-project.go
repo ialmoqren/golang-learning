@@ -29,10 +29,6 @@ type News struct {
 	Locations []string `xml:"url>loc"`
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<h1>Whoa, Go is neat!</h1>")
-}
-
 func newsRoutine(c chan News, Location string) {
 	defer wg.Done()
 	var n News
@@ -71,7 +67,6 @@ func newsAggHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/agg/", newsAggHandler)
 	http.ListenAndServe("", nil)
 }
